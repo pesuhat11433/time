@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>認時間小幫手</title>
+<style>
+  :root{
+    --paper:#fdf6e6;
+    --ink:#2b2b2b;
+    --toy:#f6efe0;
+    --handle:#ffd23f;
+    --coral:#ff5a4d;
+    --blue:#3ba3e0;
+    --sun:#ff8a3d;
+    --yellow:#ffcf3f;
+    --lcd:#bcd0c2;
+    --lcd-ink:#33463a;
+    --green:#6cc46a;
+
+    /* ===== 眼睛可調參數（改這裡就好） ===== */
+    --eye-size:56px;      /* 眼睛大小 */
+    --eye-fill:#cfe0d2;   /* 眼白顏色 */
+    --pupil-size:16px;    /* 瞳孔大小 */
+    --pupil-color:#3a4a40;/* 瞳孔顏色 */
+    --lash-color:#2b2b2b; /* 睫毛顏色 */
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei","Segoe UI",sans-serif;
+    background:var(--paper);color:var(--ink);min-height:100vh;overflow-x:hidden;
+    display:flex;flex-direction:column;align-items:center;padding:20px 14px 40px;position:relative;}
+  .doodles{position:fixed;inset:0;pointer-events:none;z-index:0;}
+  .doodles>div{position:absolute;}
+  .wrap{position:relative;z-index:1;width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;}
+  h1{font-size:24px;font-weight:900;margin:0 0 2px;letter-spacing:1px;text-shadow:2px 2px 0 var(--yellow);}
+  .sub{font-size:13px;color:#8a7f66;margin-bottom:12px;}
+
+  .topbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:14px;}
+  .difflabel{font-size:12px;font-weight:900;color:#8a7f66;align-self:center;margin-right:2px;}
+  .tag{border:2.5px solid var(--ink);background:#fff;border-radius:14px 12px 15px 11px;padding:5px 11px;
+       font-size:12.5px;font-weight:800;cursor:pointer;transform:rotate(-1deg);transition:.12s;}
+  .tag:nth-child(even){transform:rotate(1deg);}
+  .tag.on{background:var(--yellow);}
+
+  .handle{width:66%;height:78px;border:13px solid var(--handle);border-bottom:none;border-radius:46px 46px 0 0;
+          box-shadow:0 0 0 3px var(--ink),inset 0 0 0 3px var(--ink);margin-bottom:-40px;}
+  .toy{width:100%;background:var(--toy);border:4px solid var(--ink);border-radius:38px 40px 34px 36px;
+       padding:46px 20px 22px;position:relative;box-shadow:6px 8px 0 rgba(43,43,43,.14);}
+
+  /* ===== 眼睛設計（含睫毛，可自由修改）===== */
+  .eyes{display:flex;justify-content:center;gap:30px;margin-bottom:6px;}
+  .eyewrap{position:relative;width:var(--eye-size);height:var(--eye-size);}
+  .lash{position:absolute;top:-15px;left:-3px;width:calc(var(--eye-size) + 8px);height:26px;overflow:visible;z-index:3;}
+  .eyewrap.flip .lash{transform:scaleX(-1);}
+  .eye{width:var(--eye-size);height:var(--eye-size);border-radius:50%;background:var(--eye-fill);
+       border:4px solid var(--ink);position:relative;overflow:hidden;box-shadow:inset 0 3px 6px rgba(0,0,0,.12);}
+  .pupil{position:absolute;width:var(--pupil-size);height:var(--pupil-size);border-radius:50%;
+         background:var(--pupil-color);left:50%;top:50%;transform:translate(-50%,-50%);
+         transition:transform .25s cubic-bezier(.34,1.56,.64,1);}
+  /* ============================================= */
+
+  .clockwrap{display:flex;justify-content:center;margin:2px 0 4px;}
+  svg#clock{width:100%;max-width:250px;touch-action:none;user-select:none;-webkit-user-select:none;display:block;}
+  svg#clock.grab{cursor:grab;}
+
+  .lcd{background:var(--lcd);border:4px solid var(--ink);border-radius:14px;margin:10px 2px 0;padding:12px 10px;
+       position:relative;overflow:hidden;min-height:66px;display:flex;align-items:center;justify-content:center;text-align:center;}
+  .lcd::before{content:"";position:absolute;inset:0;
+       background-image:radial-gradient(rgba(51,70,58,.16) 1px,transparent 1.3px);background-size:5px 5px;pointer-events:none;}
+  .lcd .txt{position:relative;font-family:ui-monospace,"SF Mono","Courier New",monospace;font-weight:800;color:var(--lcd-ink);line-height:1.15;}
+  .big{font-size:26px;letter-spacing:1px;} .huge{font-size:28px;letter-spacing:1px;} .small{font-size:13px;opacity:.85;}
+  .hh{color:#b8442f;} .mm{color:#1f6a94;}
+  .stat{position:absolute;top:5px;right:9px;font-size:12px;font-weight:800;color:var(--lcd-ink);z-index:2;
+        font-family:ui-monospace,"Courier New",monospace;}
+
+  .steppers{display:flex;justify-content:center;gap:18px;margin-top:12px;}
+  .stp{display:flex;align-items:center;gap:6px;}
+  .stp .lab{font-size:13px;font-weight:900;} .stp .lab.h{color:var(--coral);} .stp .lab.m{color:var(--blue);}
+  .rnd{width:36px;height:36px;border:3px solid var(--ink);border-radius:50%;font-size:20px;font-weight:900;line-height:1;
+       cursor:pointer;color:#fff;box-shadow:0 3px 0 var(--ink);transition:transform .05s;}
+  .rnd:active{transform:translateY(3px);box-shadow:0 0 0 var(--ink);}
+  .rnd.h{background:var(--coral);} .rnd.m{background:var(--blue);}
+
+  .btnrow{display:flex;gap:10px;justify-content:center;margin-top:16px;}
+  .key{flex:1;min-width:0;border:4px solid var(--ink);border-radius:16px 15px 17px 14px;padding:12px 6px;font-size:15px;
+       font-weight:900;cursor:pointer;color:#fff;box-shadow:0 5px 0 var(--ink);transition:transform .06s,box-shadow .06s;
+       display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.15;}
+  .key:active{transform:translateY(5px);box-shadow:0 0 0 var(--ink);}
+  .key .k-sub{font-size:11px;font-weight:700;opacity:.9;}
+  .key.y{background:var(--yellow);color:var(--ink);} .key.b{background:var(--blue);}
+  .key.r{background:var(--coral);} .key.g{background:var(--green);}
+  .key .num{font-size:22px;}
+
+  /* 關卡選擇 */
+  .levels{width:100%;margin-top:18px;}
+  .levels .lt{font-size:13px;font-weight:900;color:#8a7f66;text-align:center;margin-bottom:8px;}
+  .lvlrow{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+  .lvl{border:3.5px solid var(--ink);background:#fff;border-radius:16px 14px 17px 13px;padding:11px 8px;
+       font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s,box-shadow .06s;
+       display:flex;align-items:center;justify-content:center;gap:5px;position:relative;}
+  .lvl:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink);}
+  .lvl.on{background:var(--yellow);}
+  .lvl .badge{position:absolute;top:-9px;right:-6px;font-size:17px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3));}
+
+  .tip{font-size:12px;color:#8a7f66;margin-top:18px;line-height:1.7;text-align:center;}
+  .tip b.h{color:var(--coral);} .tip b.m{color:var(--blue);}
+
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.05) rotate(-1deg)}100%{transform:scale(1)}}
+  .celebrate{animation:pop .5s ease;}
+  @keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .shake{animation:shk .35s ease;}
+  .burst{position:absolute;font-size:26px;pointer-events:none;animation:fly 1s ease-out forwards;z-index:5;}
+  @keyframes fly{0%{opacity:1;transform:translate(0,0) scale(.6)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.4)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+  @media (max-width:360px){h1{font-size:22px;} .big{font-size:23px;} .huge{font-size:24px;}}
+</style>
+</head>
+<body>
+<div class="doodles" id="doodles"></div>
+<div class="wrap">
+  <h1>🕐 認時間小幫手</h1>
+  <div class="sub">拖指針玩玩看，或到下面選一個關卡挑戰！</div>
+
+  <div class="topbar" id="topbar">
+    <span class="difflabel">難度</span>
+    <button class="tag on" data-diff="hour">整點</button>
+    <button class="tag" data-diff="half">半點</button>
+    <button class="tag" data-diff="quarter">一刻</button>
+    <button class="tag" data-diff="five">每5分</button>
+    <button class="tag" data-diff="any">任意</button>
+  </div>
+
+  <div class="handle"></div>
+  <div class="toy" id="toy">
+    <div class="eyes">
+      <div class="eyewrap">
+        <svg class="lash" viewBox="0 0 62 26"><g stroke="var(--lash-color)" stroke-width="3.4" stroke-linecap="round" fill="none">
+          <path d="M8 24 Q3 12 7 5"/><path d="M19 22 Q17 10 22 4"/><path d="M31 21 Q31 10 35 5"/></g></svg>
+        <div class="eye"><span class="pupil" id="pL"></span></div>
+      </div>
+      <div class="eyewrap flip">
+        <svg class="lash" viewBox="0 0 62 26"><g stroke="var(--lash-color)" stroke-width="3.4" stroke-linecap="round" fill="none">
+          <path d="M8 24 Q3 12 7 5"/><path d="M19 22 Q17 10 22 4"/><path d="M31 21 Q31 10 35 5"/></g></svg>
+        <div class="eye"><span class="pupil" id="pR"></span></div>
+      </div>
+    </div>
+
+    <div class="clockwrap">
+      <svg id="clock" class="grab" viewBox="0 0 320 320" aria-label="時鐘">
+        <circle cx="160" cy="160" r="150" fill="#fff" stroke="var(--ink)" stroke-width="7"/>
+        <circle cx="160" cy="160" r="150" fill="none" stroke="var(--yellow)" stroke-width="3" stroke-dasharray="2 9" opacity=".7"/>
+        <g id="ticks"></g>
+        <g id="numbers" font-weight="900" fill="var(--ink)" font-family="inherit" font-size="28"></g>
+        <line id="minHand" x1="160" y1="160" x2="160" y2="60" stroke="var(--blue)" stroke-width="9" stroke-linecap="round"/>
+        <line id="hourHand" x1="160" y1="160" x2="160" y2="98" stroke="var(--coral)" stroke-width="12" stroke-linecap="round"/>
+        <circle cx="160" cy="160" r="12" fill="var(--ink)"/>
+        <circle cx="160" cy="160" r="5" fill="#fff"/>
+      </svg>
+    </div>
+
+    <div class="lcd" id="lcd"><span class="stat" id="stat"></span><span class="txt" id="lcdtxt"></span></div>
+
+    <div class="steppers" id="steppers">
+      <div class="stp"><span class="lab h">時</span>
+        <button class="rnd h" id="hMinus">–</button><button class="rnd h" id="hPlus">+</button></div>
+      <div class="stp"><span class="lab m">分</span>
+        <button class="rnd m" id="mMinus">–</button><button class="rnd m" id="mPlus">+</button></div>
+    </div>
+
+    <div class="btnrow" id="btnrow"></div>
+  </div>
+
+  <div class="levels">
+    <div class="lt">🎮 選關卡</div>
+    <div class="lvlrow" id="levels">
+      <button class="lvl on" data-mode="free">✏️ 自由玩</button>
+      <button class="lvl" data-mode="quiz">🎯 一般練習</button>
+      <button class="lvl" data-mode="streak">🏅 連對5題</button>
+      <button class="lvl" data-mode="timed">⏱️ 30秒衝刺</button>
+    </div>
+  </div>
+
+  <p class="tip">
+    先只看 <b class="h">紅色短針</b>，過了哪個數字就是幾點多；<br>
+    再用 <b class="m">藍色長針</b> 從 12 開始「5、10、15…」數格子。
+  </p>
+</div>
+<script>
+(function(){
+  var cx=160, cy=160, hours=3, minutes=0;
+  var mode='free', diff='hour', streak=0, correct=null, options=[];
+  var timedScore=0, timeLeft=30, timer=null, running=false, solved=false, medal=false;
+  var $=function(id){return document.getElementById(id);};
+  var svg=$('clock'), hourHand=$('hourHand'), minHand=$('minHand');
+  var lcdtxt=$('lcdtxt'), statEl=$('stat'), toy=$('toy'), pL=$('pL'), pR=$('pR');
+
+  /* 建鐘面 */
+  (function(){
+    var t=$('ticks');
+    for(var i=0;i<60;i++){
+      var a=i*6*Math.PI/180, long=(i%5===0), r1=143, r2=long?125:135;
+      var l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',cx+r1*Math.sin(a));l.setAttribute('y1',cy-r1*Math.cos(a));
+      l.setAttribute('x2',cx+r2*Math.sin(a));l.setAttribute('y2',cy-r2*Math.cos(a));
+      l.setAttribute('stroke',long?'#2b2b2b':'#c9c2b0');l.setAttribute('stroke-width',long?4:2);
+      l.setAttribute('stroke-linecap','round');t.appendChild(l);
+    }
+    var g=$('numbers');
+    for(var n=1;n<=12;n++){
+      var a2=n*30*Math.PI/180, R=107;
+      var tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('x',cx+R*Math.sin(a2));tx.setAttribute('y',cy-R*Math.cos(a2)+10);
+      tx.setAttribute('text-anchor','middle');tx.textContent=n;g.appendChild(tx);
+    }
+  })();
+
+  /* 背景塗鴉 */
+  (function(){
+    var d=$('doodles'), W=window.innerWidth;
+    var sun='<svg width="90" height="90" viewBox="0 0 100 100"><g fill="none" stroke="#2b2b2b" stroke-width="4" stroke-linecap="round"><circle cx="50" cy="50" r="20" fill="#ff8a3d"/>'
+      +[0,45,90,135,180,225,270,315].map(function(deg){var a=deg*Math.PI/180;return '<line x1="'+(50+26*Math.cos(a))+'" y1="'+(50+26*Math.sin(a))+'" x2="'+(50+38*Math.cos(a))+'" y2="'+(50+38*Math.sin(a))+'"/>';}).join('')+'</g></svg>';
+    var star=function(c){return '<svg width="46" height="46" viewBox="0 0 50 50"><path d="M25 5 L31 19 L46 20 L34 30 L38 45 L25 37 L12 45 L16 30 L4 20 L19 19 Z" fill="'+c+'" stroke="#2b2b2b" stroke-width="3.5" stroke-linejoin="round"/></svg>';};
+    var cloud='<svg width="80" height="50" viewBox="0 0 90 55"><path d="M20 45 Q5 45 8 32 Q6 20 20 22 Q24 8 42 12 Q58 4 64 20 Q82 20 78 36 Q82 48 66 45 Z" fill="#eaf4fb" stroke="#2b2b2b" stroke-width="3.5" stroke-linejoin="round"/></svg>';
+    var squig='<svg width="60" height="24" viewBox="0 0 60 24"><path d="M4 14 Q14 2 24 14 T44 14 T64 14" fill="none" stroke="#5bb3e8" stroke-width="4" stroke-linecap="round"/></svg>';
+    var items=[{h:sun,x:'4%',y:'7%',r:-8},{h:star('#ffcf3f'),x:'86%',y:'5%',r:12},{h:cloud,x:'70%',y:'15%',r:0},
+      {h:star('#5bb3e8'),x:'7%',y:'60%',r:-14},{h:squig,x:'80%',y:'52%',r:8},{h:star('#ff8a3d'),x:'90%',y:'80%',r:20},
+      {h:cloud,x:'2%',y:'38%',r:6},{h:squig,x:'12%',y:'90%',r:-6}];
+    if(W<520)items=[items[0],items[1],items[3],items[5]];
+    d.innerHTML=items.map(function(it){return '<div style="left:'+it.x+';top:'+it.y+';transform:rotate('+it.r+'deg);opacity:.9">'+it.h+'</div>';}).join('');
+  })();
+
+  function h12(h){return (h%12===0)?12:h%12;}
+  function fmt(h,m){return h12(h)+':'+String(m).padStart(2,'0');}
+  function setEyes(s){
+    if(s==='happy'){pL.style.transform=pR.style.transform='translate(-50%,-90%) scale(.8)';}
+    else if(s==='oops'){pL.style.transform='translate(-90%,-8%)';pR.style.transform='translate(-8%,-8%)';}
+    else{pL.style.transform=pR.style.transform='translate(-50%,-50%)';}
+  }
+  function renderClock(){
+    minHand.setAttribute('transform','rotate('+(minutes*6)+' '+cx+' '+cy+')');
+    hourHand.setAttribute('transform','rotate('+((hours%12+minutes/60)*30)+' '+cx+' '+cy+')');
+  }
+  function lcd(html){lcdtxt.innerHTML=html;}
+  function setStat(t){statEl.textContent=t||'';}
+
+  function freeLCD(){
+    var h=h12(hours), out='<span class="big"><span class="hh">'+h+'點</span>';
+    if(minutes===0)out+='<span class="hh">整</span>';
+    else if(minutes===30)out+='<span class="mm"> 半</span>';
+    else out+='<span class="mm"> '+minutes+'分</span>';
+    out+='</span><br><span class="small">'+fmt(hours,minutes)+'</span>';lcd(out);
+  }
+  function update(){renderClock();if(mode==='free')freeLCD();}
+
+  function mkKey(row,cls,top,sub,fn,isNum){
+    var b=document.createElement('button');b.className='key '+cls;
+    b.innerHTML=(isNum?top:'<span style="font-size:20px">'+top+'</span>')+(sub?'<span class="k-sub">'+sub+'</span>':'');
+    b.onclick=fn;row.appendChild(b);
+  }
+  function answerButtons(){
+    var row=$('btnrow');row.innerHTML='';var colors=['y','b','r'];
+    options.forEach(function(o,i){mkKey(row,colors[i%3],'<span class="num">'+fmt(o.h,o.m)+'</span>','',function(){answer(o);},true);});
+  }
+  function freeButtons(){
+    var row=$('btnrow');row.innerHTML='';
+    mkKey(row,'b','🔀','隨機時間',randomFree);
+    mkKey(row,'r','🕛','歸零',function(){hours=0;minutes=0;update();});
+  }
+
+  /* 關卡切換 */
+  function clearTimer(){if(timer){clearInterval(timer);timer=null;}}
+  function setLevel(m){[].forEach.call($('levels').children,function(b){b.classList.toggle('on',b.dataset.mode===m);});}
+  function enterMode(m){
+    clearTimer();running=false;solved=false;mode=m;setEyes('normal');setLevel(m);
+    if(m==='free'){svg.classList.add('grab');$('steppers').style.display='flex';setStat('');freeButtons();update();return;}
+    svg.classList.remove('grab');$('steppers').style.display='none';
+    streak=0;timedScore=0;
+    if(m==='timed'){timeLeft=30;running=true;startTimer();}
+    newQuiz();
+  }
+  $('levels').addEventListener('click',function(e){var b=e.target.closest('.lvl');if(b)enterMode(b.dataset.mode);});
+
+  function startTimer(){
+    clearTimer();
+    timer=setInterval(function(){
+      timeLeft--;setStat('⏱ '+timeLeft+'s');
+      if(timeLeft<=0){clearTimer();running=false;endTimed();}
+    },1000);
+    setStat('⏱ '+timeLeft+'s');
+  }
+  function endTimed(){
+    setEyes(timedScore>0?'happy':'normal');
+    lcd('<span class="huge">⏰ 時間到!</span><br><span class="small">答對 '+timedScore+' 題 🎉</span>');
+    if(timedScore>=6)celebrate();
+    var row=$('btnrow');row.innerHTML='';
+    mkKey(row,'g','▶','再玩一次',function(){enterMode('timed');});
+  }
+
+  function randMinute(){
+    if(diff==='hour')return 0;
+    if(diff==='half')return Math.random()<.5?0:30;
+    if(diff==='quarter')return [0,15,30,45][Math.floor(Math.random()*4)];
+    if(diff==='five')return Math.floor(Math.random()*12)*5;
+    return Math.floor(Math.random()*60);
+  }
+  function quizPrompt(){
+    if(mode==='quiz'){setStat(streak>0?'⭐x'+streak:'');lcd('<span class="huge">幾點呢?</span><br><span class="small">選對就得 ⭐</span>');}
+    else if(mode==='streak'){setStat('連 '+streak+'/5');lcd('<span class="huge">幾點呢?</span><br><span class="small">連對 5 題拿獎章 🏅</span>');}
+    else if(mode==='timed'){setStat('⏱ '+timeLeft+'s');lcd('<span class="huge">幾點呢?</span><br><span class="small">已答對 '+timedScore+' 題</span>');}
+  }
+  function newQuiz(){
+    solved=false;setEyes('normal');
+    hours=Math.floor(Math.random()*12);minutes=randMinute();
+    correct={h:hours,m:minutes};options=[{h:hours,m:minutes}];
+    var g=0;while(options.length<3&&g++<60){var c={h:Math.floor(Math.random()*12),m:randMinute()};
+      if(!options.some(function(o){return o.h===c.h&&o.m===c.m;}))options.push(c);}
+    for(var i=options.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=options[i];options[i]=options[j];options[j]=t;}
+    renderClock();quizPrompt();answerButtons();
+  }
+
+  function answer(o){
+    if(solved && mode!=='timed')return;
+    var ok=(o.h===correct.h && o.m===correct.m);
+    if(!ok){
+      setEyes('oops');
+      if(mode==='streak' && streak>0){streak=0;setStat('連 0/5');
+        lcd('<span class="huge">哎呀!</span><br><span class="small">連對中斷，重新開始</span>');}
+      else lcd('<span class="huge">再試試看!</span><br><span class="small">看看短針過了哪個數字</span>');
+      toy.classList.remove('shake');void toy.offsetWidth;toy.classList.add('shake');return;
+    }
+    /* 答對 */
+    setEyes('happy');
+    if(mode==='timed'){
+      if(!running)return;
+      timedScore++;celebrateSmall();newQuiz();setStat('⏱ '+timeLeft+'s');return;
+    }
+    solved=true;streak++;celebrate();
+    if(mode==='streak'){
+      setStat('連 '+Math.min(streak,5)+'/5');
+      if(streak>=5){medal=true;markMedal();
+        lcd('<span class="huge">🏅 解鎖獎章!</span><br><span class="small">連對 5 題，太厲害了！</span>');
+        var row=$('btnrow');row.innerHTML='';mkKey(row,'g','▶','再挑戰一次',function(){streak=0;newQuiz();});return;}
+      lcd('<span class="huge">👍 GOOD JOB!</span><br><span class="small">連對 '+streak+' 題，再接再厲！</span>');
+    }else{
+      setStat('⭐x'+streak);
+      lcd('<span class="huge">👍 GOOD JOB!</span><br><span class="small">'+fmt(correct.h,correct.m)+' 答對了！</span>');
+    }
+    var row2=$('btnrow');row2.innerHTML='';mkKey(row2,'g','▶','下一題',newQuiz);
+  }
+  function markMedal(){
+    var b=$('levels').querySelector('[data-mode="streak"]');
+    if(b && !b.querySelector('.badge')){var s=document.createElement('span');s.className='badge';s.textContent='🏅';b.appendChild(s);}
+  }
+
+  function celebrate(){
+    toy.classList.remove('celebrate');void toy.offsetWidth;toy.classList.add('celebrate');
+    var em=['⭐','🎉','✨','🌟'];
+    for(var k=0;k<9;k++){var s=document.createElement('span');s.className='burst';s.textContent=em[k%em.length];
+      s.style.left=(45+Math.random()*10)+'%';s.style.top='42%';
+      s.style.setProperty('--dx',(Math.random()*180-90)+'px');s.style.setProperty('--dy',(-60-Math.random()*100)+'px');
+      toy.appendChild(s);(function(el){setTimeout(function(){el.remove();},1000);})(s);}
+  }
+  function celebrateSmall(){var s=document.createElement('span');s.className='burst';s.textContent='⭐';
+    s.style.left='50%';s.style.top='42%';s.style.setProperty('--dx',(Math.random()*80-40)+'px');s.style.setProperty('--dy','-70px');
+    toy.appendChild(s);setTimeout(function(){s.remove();},700);}
+
+  function randomFree(){hours=Math.floor(Math.random()*12);minutes=randMinute();update();}
+
+  /* 難度 */
+  $('topbar').addEventListener('click',function(e){var b=e.target.closest('.tag[data-diff]');if(!b)return;
+    diff=b.dataset.diff;[].forEach.call(this.querySelectorAll('.tag[data-diff]'),function(c){c.classList.toggle('on',c===b);});
+    if(mode==='free')update();
+    else if(mode!=='timed' || running)newQuiz();});
+  /* 步進器 */
+  $('hPlus').onclick=function(){hours=(hours+1)%12;update();};
+  $('hMinus').onclick=function(){hours=(hours+11)%12;update();};
+  $('mPlus').onclick=function(){minutes=(minutes+1)%60;update();};
+  $('mMinus').onclick=function(){minutes=(minutes+59)%60;update();};
+
+  /* 拖動（自由玩） */
+  function pAng(e){var r=svg.getBoundingClientRect(),s=320/r.width;
+    var dx=(e.clientX-r.left)*s-cx,dy=(e.clientY-r.top)*s-cy;var a=Math.atan2(dx,-dy)*180/Math.PI;return a<0?a+360:a;}
+  function aDist(a,b){var d=Math.abs(a-b)%360;return d>180?360-d:d;}
+  var drag=null;
+  svg.addEventListener('pointerdown',function(e){if(mode!=='free')return;
+    var a=pAng(e),hA=(hours%12+minutes/60)*30,mA=minutes*6;drag=(aDist(a,hA)<=aDist(a,mA))?'h':'m';mv(e);});
+  function mv(e){if(!drag)return;e.preventDefault();var a=pAng(e);
+    if(drag==='m'){minutes=Math.round(a/6)%60;}
+    else{var raw=a/30,h=Math.floor(raw),m=Math.round((raw-h)*60);if(m===60){m=0;h++;}hours=h%12;minutes=m;}update();}
+  window.addEventListener('pointermove',mv,{passive:false});
+  window.addEventListener('pointerup',function(){drag=null;});
+
+  enterMode('free');
+})();
+</script>
+</body>
+</html>
