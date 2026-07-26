@@ -159,13 +159,13 @@
   <div class="btnrow" id="btnrow"></div>
 
   <div class="levels">
-    <div class="lt">🎮 選關卡</div>
+    <div class="lt">選關卡</div>
     <div class="lvlrow" id="levels">
-      <button class="lvl on" data-mode="free">✏️ 自由玩</button>
-      <button class="lvl" data-mode="quiz">🎯 一般練習</button>
-      <button class="lvl" data-mode="streak">🏅 連對5題</button>
-      <button class="lvl" data-mode="timed">⏱️ 30秒衝刺</button>
-      <button class="lvl wide" data-mode="listen">👂 聽力擺鐘</button>
+      <button class="lvl on" data-mode="free">自由玩</button>
+      <button class="lvl" data-mode="quiz">一般練習</button>
+      <button class="lvl" data-mode="streak">連對5題</button>
+      <button class="lvl" data-mode="timed">30秒衝刺</button>
+      <button class="lvl wide" data-mode="listen">聽力擺鐘</button>
     </div>
   </div>
 
@@ -275,9 +275,9 @@
   }
   function freeButtons(){
     var row=$('btnrow');row.innerHTML='';
-    if(canSpeak)mkKey(row,'y','🔊','唸時間',speakNow);
-    mkKey(row,'b','🔀','隨機時間',function(){randomFree();});
-    mkKey(row,'r','🕛','歸零',function(){hours=0;minutes=0;update();});
+    if(canSpeak)mkKey(row,'y','唸時間',speakNow);
+    mkKey(row,'b','隨機時間',function(){randomFree();});
+    mkKey(row,'r','歸零',function(){hours=0;minutes=0;update();});
   }
 
   function clearTimer(){if(timer){clearInterval(timer);timer=null;}}
@@ -305,7 +305,7 @@
     setStat('⏱ '+timeLeft+'s');
   }
   function endTimed(){
-    lcd('<span class="huge">⏰ 時間到!</span><br><span class="small">答對 '+timedScore+' 題 🎉</span>');
+    lcd('<span class="huge">時間到!</span><br><span class="small">答對 '+timedScore+' 題 🎉</span>');
     if(timedScore>=6)celebrate();
     var row=$('btnrow');row.innerHTML='';mkKey(row,'g','▶','再玩一次',function(){enterMode('timed');});
   }
